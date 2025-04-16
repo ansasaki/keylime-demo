@@ -1,0 +1,16 @@
+---
+# Generate the admin SSH key and install in the nodes
+- name: Create directory for SSH keys if not present
+  file:
+    path: "{{ demo_dir }}/ssh"
+    state: directory
+    mode: "0700"
+
+- name: Create SSH key for admin
+  community.crypto.openssh_keypair:
+    path: "{{ demo_dir }}/ssh/admin_id"
+    type: ed25519
+    state: present
+    mode: '0600'
+    force: false
+  register: generated_key

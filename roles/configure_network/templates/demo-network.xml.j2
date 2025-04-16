@@ -1,0 +1,14 @@
+<network>
+  <name>{{ network.name }}</name>
+  <uuid>{{ network.uuid }}</uuid>
+  <forward mode="nat"/>
+  <bridge name="{{ network.bridge }}" stp="on" delay="0"/>
+  <mac address="52:54:00:ab:cd:ef"/>
+  <domain name="{{ network.domain }}" localOnly="yes"/>
+  <ip address="{{ network.dhcp_ip }}" netmask="{{ network.dhcp_mask }}">
+    <dhcp>
+      <range start="{{ network.dhcp_range_start }}" end="{{ network.dhcp_range_end }}"/>
+    </dhcp>
+  </ip>
+</network>
+

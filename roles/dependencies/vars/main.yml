@@ -1,0 +1,14 @@
+---
+# Demo requirements
+dependencies:
+  - curl
+  - firewalld
+  - jq
+  - libvirt
+  - openssl
+  - podman
+  - python3
+  - python3-cryptography
+  - swtpm
+  - swtpm-tools
+  - tpm2-tools

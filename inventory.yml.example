@@ -1,0 +1,23 @@
+---
+all:
+  hosts:
+    controller:
+      ansible_host: localhost
+      connection: "local"
+  vars:
+    demo_dir: "~/keylime_demo"
+    container_registry: "quay.io"
+    container_registry_username: "YOUR_USERNAME"
+    container_registry_secret: "YOUR_SECRET"
+
+monitored:
+  hosts:
+    node1:
+      ansible_host: node1.demo
+    node2:
+      ansible_host: node2.demo
+  vars:
+    demo_dir: "~/keylime_demo"
+    ansible_user: "root"
+    ansible_ssh_private_key_file: "{{ demo_dir }}/ssh/admin_id"
+    ansible_host_key_checking: false

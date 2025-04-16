@@ -1,0 +1,42 @@
+---
+- name: Download Fedora releases info
+  ansible.builtin.uri:
+    url: "https://fedoraproject.org/releases.json"
+  register: release_info
+
+- name: Get latest stable Fedora info
+  vars:
+    latest_info: "{{ release_info.json | json_query('[?variant==`Server` && arch==`x86_64` && contains(link, `dvd`) && !contains(link, `Beta`)]') | first }}"
+  set_fact:
+    latest_fedora_release: "{{ latest_info }}"
+    fedora_url: "{{ latest_info | json_query('link') }}"
+    fedora_checksum: "{{ latest_info | json_query('sha256') }}"
+    fedora_filename: "{{ latest_info | json_query('link') | basename }}"
+    fedora_version: "{{ latest_info | json_query('version') }}"
+
+- name: Store the latest stable Fedora release info
+  copy:
+    dest: "{{ demo_dir }}/latest.json"
+    content: "{{ latest_fedora_release | to_json }}"
+
+- name: Check if the latest Fedora release image was already downloaded
+  stat:
+    path: "{{ demo_dir }}/{{ fedora_filename }}"
+  run_once: true
+  register: downloaded_exists
+
+- name: Check the latest Fedora release image checksum
+  shell: >
+    echo "{{ fedora_checksum }}  {{ demo_dir }}/{{ fedora_filename }}" | sha256sum -c
+  register: fedora_checksum_check
+  when: downloaded_exists.stat.exists
+
+- name: Download the Fedora ISO image if it is not downloaded yet or the checksum doesn't match
+  ansible.builtin.get_url:
+    url: "{{ fedora_url }}"
+    dest: "{{ demo_dir }}"
+  when: not(downloaded_exists.stat.exists) or not(fedora_checksum_check.rc == 0)
+
+- name: Verify the checksum of the downloaded image matches expected value
+  shell: >
+    echo "{{ fedora_checksum }}  {{ demo_dir }}/{{ fedora_filename }}" | sha256sum -c

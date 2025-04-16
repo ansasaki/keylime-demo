@@ -1,0 +1,19 @@
+---
+# Create and start VM using downloaded image
+- name: Make sure libvirtd service is running
+  become: true
+  ansible.builtin.systemd_service:
+    state: started
+    name: libvirtd
+
+- name: Make sure the monitored nodes VMs are running
+  community.libvirt.virt:
+    name: "{{ item }}"
+    state: running
+    uri: "qemu:///session"
+  with_items: "{{ groups['monitored'] }}"
+
+- name: Wait until monitored nodes are reachable/usable
+  wait_for_connection:
+    timeout: 600
+  with_items: "{{ groups['monitored'] }}"

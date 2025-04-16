@@ -1,0 +1,59 @@
+---
+# Create and start VM using downloaded image
+- name: Make sure libvirtd service is running
+  become: true
+  ansible.builtin.systemd_service:
+    state: started
+    name: libvirtd
+
+- name: List all VMs
+  community.libvirt.virt:
+    command: list_vms
+    uri: "qemu:///session"
+  register: all_vms
+
+- name: Configure temporary virtual network
+  vars:
+    network:
+      name: "demo"
+      bridge: "virbr-demo"
+      domain: "demo"
+      uuid: "{{ ansible_hostname | to_uuid }}"
+      dhcp_subnet: "192.168.42.0"
+      dhcp_ip: "192.168.42.1"
+      dhcp_mask: "255.255.255.0"
+      dhcp_range_start: "192.168.42.100"
+      dhcp_range_end: "192.168.42.200"
+  include_role:
+    name: configure_network
+
+- name: Download latest Fedora stable image
+  include_role:
+    name: download_fedora_image
+
+- name: Fail if the Fedora releases info is not available
+  fail: msg="The Fedora releases information is not available"
+  when: latest_fedora_release is undefined
+
+- name: Check if the latest Fedora release image was already downloaded
+  ansible.builtin.stat:
+    path: "{{ demo_dir }}/{{ fedora_filename }}"
+  run_once: true
+  register: image_downloaded
+  failed_when: fedora_filename is undefined
+
+- name: Fail if the image is not available
+  fail: msg="The Fedora image is not available"
+  when: not(image_downloaded.stat.exists)
+
+- name: Create SSH keys if not created yet
+  include_role:
+    name: generate_ssh_keys
+
+- name: Build the image for each monitored node if they are not present
+  ansible.builtin.script: create_vm.sh -i "{{ image_path }}" -b "{{ network.bridge }}" -n "{{ node_name }}" -p "{{ password }}" -r "{{ root_password }}" -k "{{ ssh_key }}" -u "{{ user }}" -d -o "{{ demo_dir }}"
+  vars:
+    image_path: "{{ image_downloaded.stat.path }}"
+    node_name: "{{ item }}"
+    ssh_key: "{{ demo_dir }}/{{ ssh_dir }}/{{ ssh_id }}.pub"
+  with_items: "{{ groups['monitored'] | reject('in', all_vms.list_vms) | list }}"

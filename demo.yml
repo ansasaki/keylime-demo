@@ -1,0 +1,83 @@
+---
+- name: Setup demo
+  hosts: controller
+  gather_facts: true
+  tasks:
+    - name: Install and update dependencies
+      include_role:
+        name: dependencies
+
+    - name: Create the demo directory if not present
+      ansible.builtin.file:
+        path: "{{ demo_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create the certificates directory if not present
+      ansible.builtin.file:
+        path: "{{ demo_dir }}/certs"
+        state: directory
+        mode: '0755'
+
+    - name: Create the VMs if they are not created yet
+      vars:
+        network:
+          name: "demo"
+          bridge: "virbr-demo"
+      include_role:
+        name: create_vms
+
+    - name: Pull verifier and registrar images
+      vars:
+        container_images:
+          - name: "keylime/keylime_verifier"
+            tag: "master"
+          - name: "keylime/keylime_registrar"
+            tag: "master"
+      include_role:
+        name: pull_image
+
+    - name: Start verifier
+      containers.podman.podman_container:
+        state: started
+        name: verifier
+        image: keylime/keylime_verifier:master
+        ports:
+          - "8880:8880"
+          - "8881:8881"
+        volumes:
+          - "{{ demo_dir }}/certs:/var/lib/keylime:z"
+        env:
+          KEYLIME_VERIFIER_IP: "0.0.0.0"
+
+    - name: Start registrar
+      containers.podman.podman_container:
+        state: started
+        name: registrar
+        image: keylime/keylime_registrar:master
+        ports:
+          - "8890:8890"
+          - "8891:8891"
+        volumes:
+          - "{{ demo_dir }}/certs:/var/lib/keylime:z"
+        env:
+          KEYLIME_REGISTRAR_IP: "0.0.0.0"
+
+    - name: Start the VMs for the monitored nodes
+      include_role:
+        name: start_vms
+
+- name: Setup monitored nodes
+  hosts: monitored
+  gather_facts: false
+  tasks:
+    - name: Wait until monitored nodes are reachable/usable
+      wait_for_connection:
+        timeout: 600
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Install and configure keylime agent in the monitored nodes
+      include_role:
+        name: install_keylime_agent

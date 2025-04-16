@@ -1,0 +1,15 @@
+---
+- name: Login to the container registry
+  containers.podman.podman_login:
+    registry: "{{ container_registry }}"
+    username: "{{ container_registry_username }}"
+    secret: "{{ container_registry_secret }}"
+
+- name: Pull a container image
+  vars:
+    container_name: "{{ item.name }}"
+    container_tag: "{{ item.tag }}"
+  containers.podman.podman_image:
+    name: "{{ container_registry }}/{{ container_name }}"
+    tag: "{{ container_tag }}"
+  with_items: "{{ container_images }}"

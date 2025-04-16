@@ -1,0 +1,6 @@
+---
+- name: Make sure all the dependencies are installed and up-to-date
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ dependencies }}"
+    state: latest

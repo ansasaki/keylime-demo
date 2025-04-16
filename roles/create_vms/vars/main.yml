@@ -1,0 +1,7 @@
+---
+# VM creation variables
+password: "keylime"
+root_password: "keylime"
+ssh_dir: "ssh"
+ssh_id: "admin_id"
+user: "admin"

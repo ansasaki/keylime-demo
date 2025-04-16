@@ -1,0 +1,56 @@
+---
+- name: Make sure libvirtd service is running
+  become: true
+  ansible.builtin.systemd_service:
+    state: started
+    name: libvirtd
+
+- name: Generate virtual network configuration file
+  ansible.builtin.template:
+    src: "demo-network.xml.j2"
+    dest: "{{ demo_dir }}/demo-network.xml"
+  register: network_file
+
+- name: Define temporary virtual network to resolve names by hostname
+  become: true
+  community.libvirt.virt_net:
+    uri: "qemu:///session"
+    command: define
+    name: "{{ network.name }}"
+    xml: "{{ lookup('file', network_file.dest) }}"
+
+- name: Start the virtual network
+  become: true
+  community.libvirt.virt_net:
+    uri: "qemu:///session"
+    command: create
+    name: "{{ network.name }}"
+
+- name: Ensure that the virtual network is active
+  become: true
+  community.libvirt.virt_net:
+    uri: "qemu:///session"
+    state: active
+    name: "{{ network.name }}"
+
+- name: Configure controller systemd-resolved for hostname resolution (DNS)
+  become: true
+  ansible.builtin.template:
+    src: "resolved-demo.conf.j2"
+    dest: "/etc/systemd/resolved.conf.d/resolved-demo.conf"
+
+- name: Restart systemd-resolved to update DNS resolution
+  become: true
+  ansible.builtin.systemd_service:
+    state: restarted
+    daemon_reload: true
+    name: systemd-resolved
+
+- name: Configure firewalld to accept incoming connection from the guest VMs
+  become: true
+  ansible.posix.firewalld:
+    rich_rule: rule family=ipv4 source address="{{network.dhcp_subnet}}/24" accept
+    zone: libvirt
+    permanent: false
+    immediate: true
+    state: enabled

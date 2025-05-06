@@ -33,6 +33,15 @@
     state: active
     name: "{{ network.name }}"
 
+- name: Create directory if not present
+  become: true
+  ansible.builtin.file:
+    path: "/etc/systemd/resolved.conf.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Configure controller systemd-resolved for hostname resolution (DNS)
   become: true
   ansible.builtin.template:

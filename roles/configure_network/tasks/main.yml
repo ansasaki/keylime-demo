@@ -54,9 +54,9 @@
 
 - name: Configure controller systemd-resolved for hostname resolution (DNS)
   become: true
-  ansible.builtin.template:
-    src: "resolved-demo.conf.j2"
-    dest: "/etc/systemd/resolved.conf.d/resolved-demo.conf"
+  ansible.builtin.shell:
+    resolvectl dns virbr-demo 192.168.42.1 &&
+    resolvectl domain virbr-demo ~demo
 
 - name: Restart systemd-resolved to update DNS resolution
   become: true

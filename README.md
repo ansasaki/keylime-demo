@@ -163,24 +163,16 @@ monitored nodes are connected.
 
 ### DNS
 
-A `systemd-resolved` configuration snippet is added to forward the hostname
+A `systemd-resolved` configuration is added to forward the hostname
 resolution for the `*.demo` domain to the `libvirt` `dnsmasq` instance created
 to handle the virtual NAT network.
 
-The following snippet is placed in
-`/etc/systemd/resolved.conf.d/resolved-demo.conf`:
-
+This is done by running the following commands
 ```
-[Resolve]
-DNS=192.168.42.1
-Domains=~demo
+resolvectl dns virbr-demo 192.168.42.1
+resolvectl domain virbr-demo ~demo
 ```
 
-This is done to allow the monitored nodes to be addressed by their hostname
-(e.g. `node1.demo`)
-
-This change is permanent. To undo, remove the snippet by running:
-
-```
-sudo rm /etc/systemd/resolved.conf.d/resolved-demo.conf
-```
+This change is not permanent and is lost upon reboot. It is necessary to re-run
+the playbook to restore this configuration allowing the monitored nodes
+hostnames to be resolved by `libvirt` `dnsmasq` instance

@@ -153,10 +153,10 @@ if [[ ! -d "${OUT_DIR}" ]]; then
     exit 1
 fi
 
-CRYPT_PW=$(python -c "import crypt;print(crypt.crypt('${PASSWORD}'));")
+CRYPT_PW=$(mkpasswd -m sha-512 ${PASSWORD})
 debug "CRYPT_PW = ${CRYPT_PW}"
 
-CRYPT_ROOT_PW=$(python -c "import crypt;print(crypt.crypt('${ROOT_PASSWORD}'));")
+CRYPT_ROOT_PW=$(mkpasswd -m sha-512 ${ROOT_PASSWORD})
 debug "CRYPT_ROOT_PW = ${CRYPT_ROOT_PW}"
 
 if [[ "${IP}" != "dhcp" ]]; then

@@ -33,6 +33,16 @@
     state: active
     name: "{{ network.name }}"
 
+- name: Enable the virtual network to be used by qemu
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/qemu/bridge.conf
+    line: "allow virbr-demo"
+    create: yes
+    state: present
+    insertafter: EOF
+    backup: yes
+
 - name: Create directory if not present
   become: true
   ansible.builtin.file:

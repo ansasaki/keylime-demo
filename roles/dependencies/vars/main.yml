@@ -12,3 +12,4 @@ dependencies:
   - swtpm
   - swtpm-tools
   - tpm2-tools
+  - virt-install

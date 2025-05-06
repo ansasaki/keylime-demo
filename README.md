@@ -127,6 +127,16 @@ By default, a virtual interface called `virbr-demo` is created. This interface
 is destroyed on reboot or if the `virsh net-destroy --network demo` command is
 executed.
 
+#### Enabling the bridge network in qemu
+
+To allow the created virtual network to be used by qemu, the file
+`/etc/qemu/bridge.conf` is modified to include the newly created bridge.
+
+This change is persistent.
+
+To revert it, remove the line `allow virbr-demo` from the
+`/etc/qemu/bridge.conf` file.
+
 ### Firewall
 
 We run the Keylime verifier and registrar services as containers on the host

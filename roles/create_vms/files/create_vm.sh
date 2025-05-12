@@ -273,4 +273,4 @@ virt-install --connect qemu:///session \
     --tpm backend.type=emulator,backend.version=2.0,model=tpm-tis \
     --console pty,target_type=serial \
     --network bridge=${NETWORK_BRIDGE} \
-    --boot uefi
+    --boot uefi,firmware.feature0.name=secure-boot,firmware.feature0.enabled=no

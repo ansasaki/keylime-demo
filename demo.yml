@@ -19,6 +19,22 @@
         state: directory
         mode: '0755'
 
+    - name: Generate CA and IMA signing key certificates
+      vars:
+        base_dir: "{{ demo_dir }}/certs"
+        ca_dir: "{{ base_dir }}/CA"
+        root_ca_dir: "{{ ca_dir }}/root"
+        ima_dir: "{{ demo_dir }}/ima"
+      include_role:
+        name: generate_certs
+
+    - name: Generate signed IMA policy
+      vars:
+        ima_key: "{{ demo_dir }}/ima/private.key"
+        signed_policy: "{{ demo_dir }}/ima/signed_ima_policy"
+      include_role:
+        name: sign_ima_policy
+
     - name: Create the VMs if they are not created yet
       vars:
         network:
@@ -81,3 +97,12 @@
     - name: Install and configure keylime agent in the monitored nodes
       include_role:
         name: install_keylime_agent
+
+    - name: Setup IMA policy and Kernel arguments
+      vars:
+        controller_root_ca_cert: "{{ hostvars['controller'].demo_dir}}/ima/ca.crt"
+        controller_ima_cert: "{{ hostvars['controller'].demo_dir}}/ima/ima.crt"
+        controller_ima_policy: "{{ hostvars['controller'].demo_dir }}/ima/signed_ima_policy"
+        ima_cert_dir: "/root/ima/certs"
+      include_role:
+        name: ima_setup

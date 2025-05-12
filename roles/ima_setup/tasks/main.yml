@@ -1,0 +1,131 @@
+---
+- name: Make sure dependencies are installed and up-to-date
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - "ima-evm-utils"
+    - "mokutil"
+
+- name: Create IMA configuration directory if not present
+  become: true
+  ansible.builtin.file:
+    path: "/etc/ima"
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: '0644'
+
+- name: Ensure IMA certificate directory exist
+  ansible.builtin.file:
+    path: "{{ ima_cert_dir }}"
+    state: directory
+    mode: '0700'
+
+- name: Read Root CA certificate from controller
+  slurp:
+    path: "{{ controller_root_ca_cert }}"
+  delegate_to: controller
+  run_once: true
+  register: ca_cert
+
+- name: Write Root CA certificate file
+  copy:
+    dest: "{{ ima_cert_dir }}/ca.crt"
+    content: "{{ (ca_cert.content | b64decode) }}"
+
+- name: Read IMA certificate from controller
+  slurp:
+    path: "{{ controller_ima_cert }}"
+  delegate_to: controller
+  run_once: true
+  register: ima_cert
+
+- name: Write IMA certificate file
+  copy:
+    dest: "{{ ima_cert_dir }}/ima.crt"
+    content: "{{ (ima_cert.content | b64decode) }}"
+
+- name: Convert IMA PEM X.509 certificate to DER format
+  community.crypto.x509_certificate_convert:
+    src_path: "{{ ima_cert_dir }}/ima.crt"
+    dest_path: "{{ ima_cert_dir }}/ima.der"
+    format: der
+  run_once: true
+
+- name: Ensure IMA keys directory exist
+  become: true
+  ansible.builtin.file:
+    path: "/etc/keys/ima"
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: '0644'
+
+- name: Read IMA certificate in DER format to be used for Secure Boot
+  slurp:
+    path: "{{ ima_cert_dir }}/ima.der"
+  run_once: true
+  register: ima_cert_der
+
+- name: Write IMA certificate to be used for Secure Boot
+  become: true
+  copy:
+    content: "{{ (ima_cert_der.content | b64decode) }}"
+    dest: "/etc/keys/ima/ima.der"
+
+- name: Get IMA keyring ID
+  become: true
+  ansible.builtin.shell:
+    keyctl show %keyring:.ima | grep -o -m 1 '^ [0-9]\+'
+  register: keyring_id
+
+#- name: Install key to IMA keyring
+#  become: true
+#  ansible.builtin.shell:
+#    evmctl import /etc/keys/ima/ima.der .ima
+#
+#- name: Check that key was correctly imported to ima keyring
+#  become: true
+#  ansible.builtin.shell:
+#    keyctl show %keyring:.ima
+
+- name: Read signed IMA policy from controller
+  slurp:
+    path: "{{ controller_ima_policy }}"
+  delegate_to: controller
+  run_once: true
+  register: ima_policy
+
+- name: Write signed IMA policy
+  become: true
+  copy:
+    dest: "/etc/ima/ima-policy"
+    content: "{{ (ima_policy.content | b64decode) }}"
+    owner: "root"
+    group: "root"
+    mode: '0644'
+
+- name: Check attributes of signed policy
+  become: true
+  ansible.builtin.shell:
+    getfattr -m . -d /etc/ima/ima-policy
+
+- name: Re-generate initramfs to incorporate the IMA signing public key
+  become: true
+  ansible.builtin.shell:
+    dracut --kver $(uname -r) --force --add integrity
+
+- name: Set IMA argument in Kernel command line if not present
+  become: true
+  ansible.builtin.shell: >
+    grubby --update-kernel DEFAULT --args 'ima_appraise=fix ima_canonical_fmt ima_policy=tcb ima_template=ima-sig'
+
+- name: Reboot the machine
+  ansible.builtin.reboot:
+
+#- name: Check if the command line is the expected
+#  become: true
+#  ansible.builtin.shell:
+#    grubby --info DEFAULT | grep '^args.*ima_appraise=fix ima_cannonical_fmt ima_policy=tcb ima_template=ima-sig'

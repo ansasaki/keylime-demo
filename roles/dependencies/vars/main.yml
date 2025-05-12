@@ -3,12 +3,14 @@
 dependencies:
   - curl
   - firewalld
+  - ima-evm-utils
   - jq
   - libvirt
   - openssl
   - podman
   - python3
   - python3-cryptography
+  - rpm-plugin-ima
   - swtpm
   - swtpm-tools
   - tpm2-tools

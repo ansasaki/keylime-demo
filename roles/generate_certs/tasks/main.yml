@@ -1,0 +1,100 @@
+---
+- name: Ensure necessary directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0700'
+  loop:
+    - "{{ root_ca_dir }}"
+    - "{{ ima_dir }}"
+
+- name: Generate Root CA private key
+  community.crypto.openssl_privatekey:
+    path: "{{ root_ca_dir }}/private.key"
+    size: 4096
+
+- name: Generate Root CA CSR
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ root_ca_dir }}/private.key"
+    subject:
+      CN: RootCA
+      O: ExampleCorp
+      C: US
+    basic_constraints:
+      - "CA:TRUE"
+    key_usage:
+      - "digitalSignature"
+      - "cRLSign"
+      - "keyCertSign"
+    basic_constraints_critical: true
+    key_usage_critical: true
+  register: root_csr
+
+- name: Self-sign Root CA certificate
+  community.crypto.x509_certificate:
+    csr_content: "{{ root_csr.csr }}"
+    path: "{{ root_ca_dir }}/ca.crt"
+    privatekey_path: "{{ root_ca_dir }}/private.key"
+    provider: selfsigned
+    selfsigned_create_subject_key_identifier: "create_if_not_provided"
+
+- name: Generate IMA CA private key
+  community.crypto.openssl_privatekey:
+    path: "{{ ima_dir }}/ca.key"
+    size: 4096
+
+- name: Generate IMA CA CSR
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ ima_dir }}/ca.key"
+    subject:
+      CN: Custom IMA CA
+      O: ExampleCorp
+      C: US
+    basic_constraints:
+      - "CA:TRUE"
+    key_usage:
+      - "keyCertSign"
+    basic_constraints_critical: true
+    key_usage_critical: true
+  register: ima_ca_csr
+
+- name: Self-sign IMA CA certificate
+  community.crypto.x509_certificate:
+    csr_content: "{{ ima_ca_csr.csr }}"
+    path: "{{ ima_dir }}/ca.crt"
+    privatekey_path: "{{ ima_dir }}/ca.key"
+    provider: selfsigned
+    selfsigned_create_subject_key_identifier: "create_if_not_provided"
+
+- name: Generate IMA signing key
+  community.crypto.openssl_privatekey:
+    path: "{{ ima_dir }}/private.key"
+    size: 3072
+
+- name: Generate IMA signing key CSR
+  community.crypto.openssl_csr:
+    path: "{{ ima_dir }}/ima.csr"
+    privatekey_path: "{{ ima_dir }}/private.key"
+    subject:
+      CN: IMA signing
+      O: ExampleCorp
+      C: US
+    basic_constraints:
+      - "CA:FALSE"
+    extended_key_usage:
+      - "codeSigning"
+    key_usage:
+      - "digitalSignature"
+      - "nonRepudiation"
+    basic_constraints_critical: true
+    key_usage_critical: true
+
+- name: Sign IMA signing key certificate with IMA CA
+  community.crypto.x509_certificate:
+    path: "{{ ima_dir }}/ima.crt"
+    csr_path: "{{ ima_dir }}/ima.csr"
+    provider: ownca
+    ownca_privatekey_path: "{{ ima_dir }}/ca.key"
+    ownca_path: "{{ ima_dir }}/ca.crt"
+    ownca_create_authority_key_identifier: true
+    ownca_create_subject_key_identifier: "create_if_not_provided"

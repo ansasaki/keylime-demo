@@ -1,0 +1,10 @@
+---
+- name: Copy the unsigned IMA policy to output location
+  ansible.builtin.copy:
+    src: "ima-policy-simple"
+    dest: "{{ signed_policy }}"
+
+- name: Sign IMA policy using IMA signing key
+  become: true
+  ansible.builtin.shell:
+    evmctl ima_sign --hashalgo sha256 --key "{{ ima_key }}" "{{ signed_policy }}"

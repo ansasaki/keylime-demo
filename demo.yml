@@ -43,12 +43,14 @@
       include_role:
         name: create_vms
 
-    - name: Pull verifier and registrar images
+    - name: Pull verifier, registrar, and tenant images
       vars:
         container_images:
           - name: "keylime/keylime_verifier"
             tag: "master"
           - name: "keylime/keylime_registrar"
+            tag: "master"
+          - name: "keylime/keylime_tenant"
             tag: "master"
       include_role:
         name: pull_image
@@ -78,6 +80,10 @@
           - "{{ demo_dir }}/certs:/var/lib/keylime:z"
         env:
           KEYLIME_REGISTRAR_IP: "0.0.0.0"
+
+    - name: Copy TPM certificates to be usable by Keylime tenant
+      include_role:
+        name: tpm_certs
 
     - name: Start the VMs for the monitored nodes
       include_role:

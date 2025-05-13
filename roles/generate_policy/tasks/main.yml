@@ -1,0 +1,23 @@
+---
+- name: Install keylime-policy tool
+  ansible.builtin.dnf:
+    name: "python3-keylime"
+    state: present
+
+- name: Generate runtime policy using current IMA log
+  ansible.builtin.shell:
+    keylime-policy create runtime --ima-measurement --rootfs '/' --ramdisk-dir '/boot/'
+  register: keylime_policy
+
+- name: Create policies directory if not present
+  ansible.builtin.file:
+    path: "{{ demo_dir }}/policies"
+    state: directory
+    mode: '0755'
+  delegate_to: controller
+
+- name: Write policy to the controller
+  ansible.builtin.copy:
+    content: "{{ keylime_policy.stdout }}"
+    dest: "{{ demo_dir }}/policies/{{ ansible_hostname }}.policy"
+  delegate_to: controller

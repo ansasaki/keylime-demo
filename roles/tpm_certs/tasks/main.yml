@@ -1,0 +1,19 @@
+---
+- name: Create TPM cert store directory if not present
+  ansible.builtin.file:
+    path: "{{ demo_dir }}/certs/tpm_cert_store"
+    state: directory
+    mode: '0755'
+
+- name: Copy swtpm EK certificate issuer certificate
+  ansible.builtin.copy:
+    src: "~/.config/var/lib/swtpm-localca/issuercert.pem"
+    dest: "{{ demo_dir }}/certs/tpm_cert_store/issuercert.pem"
+    mode: '0644'
+
+- name: Copy swtpm EK certificate root CA certificate
+  ansible.builtin.copy:
+    src: "~/.config/var/lib/swtpm-localca/swtpm-localca-rootca-cert.pem"
+    dest: "{{ demo_dir }}/certs/tpm_cert_store/swtpm-localca-rootca-cert.pem"
+    mode: '0644'
+

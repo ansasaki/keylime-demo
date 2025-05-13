@@ -112,3 +112,7 @@
         ima_cert_dir: "/root/ima/certs"
       include_role:
         name: ima_setup
+
+    - name: Generate policies for each monitored node
+      include_role:
+        name: generate_policy

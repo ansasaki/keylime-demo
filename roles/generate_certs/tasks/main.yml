@@ -8,10 +8,11 @@
     - "{{ root_ca_dir }}"
     - "{{ ima_dir }}"
 
-- name: Generate Root CA private key
+- name: Generate Root CA private key if not present
   community.crypto.openssl_privatekey:
     path: "{{ root_ca_dir }}/private.key"
     size: 4096
+  register: generate_root_ca_key
 
 - name: Generate Root CA CSR
   community.crypto.openssl_csr_pipe:
@@ -29,6 +30,7 @@
     basic_constraints_critical: true
     key_usage_critical: true
   register: root_csr
+  when: generate_root_ca_key.changed
 
 - name: Self-sign Root CA certificate
   community.crypto.x509_certificate:
@@ -37,11 +39,13 @@
     privatekey_path: "{{ root_ca_dir }}/private.key"
     provider: selfsigned
     selfsigned_create_subject_key_identifier: "create_if_not_provided"
+  when: root_csr.changed
 
 - name: Generate IMA CA private key
   community.crypto.openssl_privatekey:
     path: "{{ ima_dir }}/ca.key"
     size: 4096
+  register: generate_ima_ca_key
 
 - name: Generate IMA CA CSR
   community.crypto.openssl_csr_pipe:
@@ -56,6 +60,7 @@
       - "keyCertSign"
     basic_constraints_critical: true
     key_usage_critical: true
+  when: generate_ima_ca_key.changed
   register: ima_ca_csr
 
 - name: Self-sign IMA CA certificate
@@ -65,11 +70,13 @@
     privatekey_path: "{{ ima_dir }}/ca.key"
     provider: selfsigned
     selfsigned_create_subject_key_identifier: "create_if_not_provided"
+  when: ima_ca_csr.changed
 
 - name: Generate IMA signing key
   community.crypto.openssl_privatekey:
     path: "{{ ima_dir }}/private.key"
     size: 3072
+  register: generate_ima_key
 
 - name: Generate IMA signing key CSR
   community.crypto.openssl_csr:
@@ -88,6 +95,8 @@
       - "nonRepudiation"
     basic_constraints_critical: true
     key_usage_critical: true
+  when: generate_ima_key.changed
+  register: ima_csr
 
 - name: Sign IMA signing key certificate with IMA CA
   community.crypto.x509_certificate:
@@ -98,3 +107,4 @@
     ownca_path: "{{ ima_dir }}/ca.crt"
     ownca_create_authority_key_identifier: true
     ownca_create_subject_key_identifier: "create_if_not_provided"
+  when: ima_csr.changed

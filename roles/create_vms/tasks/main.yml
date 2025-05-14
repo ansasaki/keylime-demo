@@ -28,23 +28,33 @@
     name: configure_network
 
 - name: Download latest Fedora stable image
+  vars:
+    missing: "{{ groups['monitored'] | reject('in', all_vms.list_vms) | list }}"
   include_role:
     name: download_fedora_image
+  when: missing | length > 0
 
 - name: Fail if the Fedora releases info is not available
+  vars:
+    missing: "{{ groups['monitored'] | reject('in', all_vms.list_vms) | list }}"
   fail: msg="The Fedora releases information is not available"
-  when: latest_fedora_release is undefined
+  when: (missing | length > 0) and (latest_fedora_release is undefined)
 
 - name: Check if the latest Fedora release image was already downloaded
+  vars:
+    missing: "{{ groups['monitored'] | reject('in', all_vms.list_vms) | list }}"
   ansible.builtin.stat:
     path: "{{ demo_dir }}/{{ fedora_filename }}"
   run_once: true
   register: image_downloaded
   failed_when: fedora_filename is undefined
+  when: missing | length > 0
 
 - name: Fail if the image is not available
+  vars:
+    missing: "{{ groups['monitored'] | reject('in', all_vms.list_vms) | list }}"
   fail: msg="The Fedora image is not available"
-  when: not(image_downloaded.stat.exists)
+  when: (missing | length > 0) and not(image_downloaded.stat.exists)
 
 - name: Create SSH keys if not created yet
   include_role:

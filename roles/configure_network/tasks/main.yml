@@ -60,7 +60,19 @@
   become: true
   ansible.posix.firewalld:
     rich_rule: rule family=ipv4 source address="{{network.dhcp_subnet}}/24" accept
-    zone: libvirt
+    zone: libvirt-routed
     permanent: false
     immediate: true
     state: enabled
+
+- name: Change libvirt-to-host policy temporarily to allow requests from VMs to host
+  become: true
+  ansible.builtin.command: firewall-cmd --policy=libvirt-to-host --add-rich-rule='rule family=ipv4 source address="{{network.dhcp_subnet}}/24" accept'
+
+- name: Enable ip forward temporarily
+  become: true
+  ansible.builtin.command: sysctl -w net.ipv4.ip_forward=1
+
+- name: Add route to redirect to packages from the host to virtual network
+  become: true
+  ansible.builtin.command: ip route replace 192.168.42.0/24 via 192.168.42.1 dev virbr-demo

@@ -141,31 +141,59 @@ To revert it, remove the line `allow virbr-demo` from the
 
 We run the Keylime verifier and registrar services as containers on the host
 network, mapping the necessary ports for communication.
-Since the monitored nodes are running on VMs under a NAT network, it is
+
+Since the monitored nodes are running on VMs under a virtual network, it is
 necessary to modify the firewall configuration to allow the requests from inside
 the guest VM to reach the service in the host.
 
-This is done my adding a rich rule to the `libvirt` zone in `firewalld`
+This is done my adding a rich rule to the `libvirt-routed` zone in `firewalld`
 configuration. This change is temporary and undone on reboot.
 
 The configuration runs the following command to add the rich rule that allows
-communication coming from the NAT subnet to the host:
+communication coming from the libvirt network to the host:
 
 ```
-sudo firewall-cmd --zone=libvirt --add-rich-rule='
+sudo firewall-cmd --zone=libvirt-routed --add-rich-rule='
     rule family="ipv4"
         source address="192.168.42.0/24"
         accept'
 ```
 
-Where the `192.168.42.0/24` is the default virtual NAT network where the
-monitored nodes are connected.
+Where the `192.168.42.0/24` is the default virtual network where the monitored
+nodes are connected.
+
+It is also necessary to allow the requests coming from the virtual network to
+the host by adding a rule to the `libvirt-to-host` policy. This is done by
+running:
+
+```
+firewall-cmd --policy=libvirt-to-host --add-rich-rule='rule family=ipv4 source address="192.168.42.0/24" accept'
+```
+
+Since the virtual network is configured to use routed forwarding mode, it is
+necessary to enable IP forwarding on the host by running:
+
+```
+sysctl -w net.ipv4.ip_forward=1
+```
+
+These changes to the firewall configuration are temporary and undone on reboot
+
+Finally, it is necessary to open the ports used by the Keylime Agent in each of
+the VMs by running:
+
+```
+firewall-cmd --add-port 9002 && firewall-cmd --add-port 8992
+```
+
+When using the roles used to create the VMs, these ports are opened permanently
+on the VMs.
 
 ### DNS
 
 A `systemd-resolved` configuration is added to forward the hostname
 resolution for the `*.demo` domain to the `libvirt` `dnsmasq` instance created
-to handle the virtual NAT network.
+to handle the virtual network.
 
 This is done by running the following commands
 ```

@@ -1,0 +1,19 @@
+---
+- name: Get the Agent list from the Verifier
+  vars:
+    certs_dir: "{{ demo_dir }}/certs"
+    ip: "{{ hostvars['controller']['ansible_default_ipv4']['address'] }}"
+    uuid: "{{ item | to_uuid }}"
+  ansible.builtin.shell:
+    podman run --rm -ti -v {{ demo_dir }}/certs:/var/lib/keylime:z --network host -e KEYLIME_TENANT_VERIFIER_IP={{ ip }} quay.io/keylime/keylime_tenant:master -c cvlist
+  register: verifier_agents
+
+- name: Delete agents that were enrolled before with the Verifier
+  vars:
+    certs_dir: "{{ demo_dir }}/certs"
+    local_ip: "{{ hostvars['controller']['ansible_default_ipv4']['address'] }}"
+  ansible.builtin.shell:
+    podman run --rm -ti -v {{ demo_dir }}/certs:/var/lib/keylime:z -v {{ demo_dir }}/policies:/var/lib/keylime/policies:z --network host -e KEYLIME_TENANT_REGISTRAR_IP={{ local_ip }} -e KEYLIME_TENANT_VERIFIER_IP={{ local_ip }} quay.io/keylime/keylime_tenant:master -c delete -u {{ item }}
+  with_items: "{{ verifier_agents.stdout_lines[-1] | from_json | json_query('uuids') | flatten }}"
+
+

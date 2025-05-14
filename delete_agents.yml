@@ -1,0 +1,9 @@
+---
+- name: Delete enrolled Agents from the Verifier
+  hosts: controller
+  gather_facts: true
+  tasks:
+    - name: Delete agents that were enrolled with the Verifier
+      include_role:
+        name: delete_agents
+

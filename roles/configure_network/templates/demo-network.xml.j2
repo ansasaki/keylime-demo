@@ -1,7 +1,7 @@
 <network>
   <name>{{ network.name }}</name>
   <uuid>{{ network.uuid }}</uuid>
-  <forward mode="nat"/>
+  <forward mode="route"/>
   <bridge name="{{ network.bridge }}" stp="on" delay="0"/>
   <mac address="52:54:00:ab:cd:ef"/>
   <domain name="{{ network.domain }}" localOnly="yes"/>

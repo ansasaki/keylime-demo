@@ -116,3 +116,19 @@
     - name: Generate policies for each monitored node
       include_role:
         name: generate_policy
+
+    - name: Open ports on firewall
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      with_items:
+        - "9002/tcp"
+        - "8992/tcp"
+
+    - name: Start Keylime agent
+      become: true
+      ansible.builtin.systemd_service:
+        state: started
+        name: keylime_agent

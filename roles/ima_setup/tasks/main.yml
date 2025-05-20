@@ -75,12 +75,12 @@
     content: "{{ (ima_cert_der.content | b64decode) }}"
     dest: "/etc/keys/ima/ima.der"
 
-- name: Get IMA keyring ID
-  become: true
-  ansible.builtin.shell:
-    keyctl show %keyring:.ima | grep -o -m 1 '^ [0-9]\+'
-  register: keyring_id
-
+#- name: Get IMA keyring ID
+#  become: true
+#  ansible.builtin.shell:
+#    keyctl show %keyring:.ima | grep -o -m 1 '^ [0-9]\+'
+#  register: keyring_id
+#
 #- name: Install key to IMA keyring
 #  become: true
 #  ansible.builtin.shell:

@@ -65,9 +65,27 @@
     immediate: true
     state: enabled
 
+- name: Configure firewalld to enable forwarding in the libvirt-routed zone
+  become: true
+  ansible.posix.firewalld:
+    forward: true
+    zone: libvirt-routed
+    permanent: false
+    immediate: true
+    state: enabled
+
+- name: Configure firewalld to enable masquerading (NAT) in the libvirt-routed zone
+  become: true
+  ansible.posix.firewalld:
+    masquerade: true
+    zone: libvirt-routed
+    permanent: false
+    immediate: true
+    state: enabled
+
 - name: Change libvirt-to-host policy temporarily to allow requests from VMs to host
   become: true
-  ansible.builtin.command: firewall-cmd --policy=libvirt-to-host --add-rich-rule='rule family=ipv4 source address="{{network.dhcp_subnet}}/24" accept'
+  ansible.builtin.command: firewall-cmd --policy=libvirt-to-host --add-rich-rule='rule family=ipv4 source address="{{ network.dhcp_subnet }}/24" accept'
 
 - name: Enable ip forward temporarily
   become: true
@@ -76,3 +94,14 @@
 - name: Add route to redirect to packages from the host to virtual network
   become: true
   ansible.builtin.command: ip route replace 192.168.42.0/24 via 192.168.42.1 dev virbr-demo
+
+- name: Find the default interface for routing to the internet
+  ansible.builtin.shell: ip route show default | grep -m 1 -o 'dev [^ ]*' | awk '{ print $2}'
+  register: default_interface
+
+- name: Add route to redirect the VM packets to and from the internet
+  become: true
+  ansible.builtin.shell: |
+    iptables -t nat -A POSTROUTING -s 192.168.42.0/24 -o "{{ default_interface.stdout }}" -j MASQUERADE
+    iptables -A FORWARD -s "{{ network.dhcp_subnet }}/24" -o "{{ default_interface.stdout }}" -j ACCEPT
+    iptables -A FORWARD -d "{{ network.dhcp_subnet }}"/24 -m state --state ESTABLISHED,RELATED -i "{{ default_interface.stdout }}" -j ACCEPT

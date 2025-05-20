@@ -177,6 +177,14 @@ necessary to enable IP forwarding on the host by running:
 sysctl -w net.ipv4.ip_forward=1
 ```
 
+Forwarding and masquerading (NAT) are enabled in firewalld for the
+`libvirt-routed` zone:
+
+```
+sudo firewall-cmd --zone=libvirt-routed --add-masquerade
+sudo firewall-cmd --zone=libvirt-routed --add-forward
+```
+
 These changes to the firewall configuration are temporary and undone on reboot
 
 Finally, it is necessary to open the ports used by the Keylime Agent in each of
@@ -199,6 +207,14 @@ This is done by running the following commands
 ```
 resolvectl dns virbr-demo 192.168.42.1
 resolvectl domain virbr-demo ~demo
+```
+
+Also `iptables` routes are added to enable routing the packets coming from/to
+the VMs to the internet. This is achieved by setting:
+```
+sudo iptables -t nat -A POSTROUTING -s 192.168.42.0/24 -o eth0 -j MASQUERADE
+sudo iptables -A FORWARD -s 192.168.42.0/24 -o eth0 -j ACCEPT
+sudo iptables -A FORWARD -d 192.168.42.0/24 -m state --state ESTABLISHED,RELATED -i eth0 -j ACCEPT
 ```
 
 This change is not permanent and is lost upon reboot. It is necessary to re-run

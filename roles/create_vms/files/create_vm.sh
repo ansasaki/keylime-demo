@@ -217,6 +217,7 @@ reboot
 %packages
 @^server-product-environment
 python3-cryptography
+qemu-guest-agent
 %end
 
 %post

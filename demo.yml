@@ -56,10 +56,13 @@
         name: pull_image
 
     - name: Start verifier
+      vars:
+        ip: "{{ hostvars['controller']['ansible_default_ipv4']['address'] }}"
       containers.podman.podman_container:
         state: started
         name: verifier
         image: keylime/keylime_verifier:master
+        network: host
         ports:
           - "8880:8880"
           - "8881:8881"
@@ -67,12 +70,15 @@
           - "{{ demo_dir }}/certs:/var/lib/keylime:z"
         env:
           KEYLIME_VERIFIER_IP: "0.0.0.0"
+          KEYLIME_VERIFIER_REVOCATIONS_ENABLED_REVOCATION_NOTIFICATIONS: "['agent', 'webhook']"
+          KEYLIME_VERIFIER_REVOCATIONS_WEBHOOK_URL: "https://{{ ip }}:8443"
 
     - name: Start registrar
       containers.podman.podman_container:
         state: started
         name: registrar
         image: keylime/keylime_registrar:master
+        network: host
         ports:
           - "8890:8890"
           - "8891:8891"
@@ -113,10 +119,6 @@
       include_role:
         name: ima_setup
 
-    - name: Generate policies for each monitored node
-      include_role:
-        name: generate_policy
-
     - name: Open ports on firewall
       ansible.posix.firewalld:
         port: "{{ item }}"
@@ -132,3 +134,20 @@
       ansible.builtin.systemd_service:
         state: started
         name: keylime_agent
+
+    - name: Generate policies for each monitored node
+      include_role:
+        name: generate_policy
+
+- name: Take snapshots of the VMs for easily restoring state
+  hosts: controller
+  gather_facts: true
+  tasks:
+    - name: Take snapshot of each VM
+      ansible.builtin.shell: |
+        virsh --connect qemu:///session \
+        snapshot-create-as \
+          {{ item }} \
+          good-{{ item }}-{{ now(utc=true, fmt='%Y-%m-%d-%H-%M-%SZ') }} \
+          "Snapshot of {{ item }} matching the runtime policy"
+      with_items: "{{ groups['monitored'] }}"

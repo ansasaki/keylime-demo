@@ -1,0 +1,21 @@
+---
+- name: Generate policies for each node
+  hosts: monitored
+  gather_facts: true
+  tasks:
+    - name: Generate policies for each monitored node
+      include_role:
+        name: generate_policy
+
+- name: Take snapshot of each node
+  hosts: controller
+  gather_facts: true
+  tasks:
+    - name: Take snapshot of each VM
+      ansible.builtin.shell: |
+        virsh --connect qemu:///session \
+        snapshot-create-as \
+          {{ item }} \
+          good-{{ item }}-{{ now(utc=true, fmt='%Y-%m-%d-%H-%M-%SZ') }} \
+          "Snapshot of {{ item }} matching the runtime policy"
+      with_items: "{{ groups['monitored'] }}"

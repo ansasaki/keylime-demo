@@ -1,0 +1,10 @@
+---
+- name: Revert each monitored node to latest snapshot
+  hosts: controller
+  gather_facts: true
+  tasks:
+    - name: Revert to latest snapshot
+      ansible.builtin.shell: |
+        virsh --connect qemu:///session \
+          snapshot-revert {{ item }} $(virsh --connect qemu:///session snapshot-list {{ item }} | grep -o 'good-{{ item }}-[^ ]*' | tail -1)
+      with_items: "{{ groups['monitored'] }}"
